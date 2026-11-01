@@ -53,3 +53,4 @@ class NoteManager:
             if search_tags.intersection(note_tag_names):
                 results.append(note)
         return results
+

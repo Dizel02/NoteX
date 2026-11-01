@@ -21,3 +21,4 @@ class Note:
     def remove_tag(self, tag_id: int) -> None:
         """Заглушка: удаление тега по id"""
         pass
+
