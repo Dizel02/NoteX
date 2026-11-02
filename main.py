@@ -3,14 +3,14 @@ from src.manager import NoteManager
 
 def main():
     manager = NoteManager()
-    
-    # Предзаполнение базы демонстрационными данными
-    manager.add_note("План на практику", "Выполнить все задачи по разработке модуля заметок.", ["учеба", "практика"])
+
+    # Демонстрационные данные
+    manager.add_note("План на практику", "Выполнить все задачи по разработке модуля заметок.", ["учёба", "практика"])
     manager.add_note("Купить продукты", "Хлеб, молоко, сыр, зерновой кофе.", ["покупки"])
     manager.add_note("Идеи для проекта", "Добавить полноценный GUI интерфейс на Python с помощью Tkinter.", ["идеи", "code"])
 
     print("=" * 60)
-    print(" СИСТЕМА УПРАВЛЕНИЯ ЗАМЕТКАМИ С ТЕГАМИ И ПОИСКОМ")
+    print("СИСТЕМА УПРАВЛЕНИЯ ЗАМЕТКАМИ С ТЕГАМИ И ПОИСКОМ")
     print("=" * 60)
 
     while True:
@@ -21,9 +21,9 @@ def main():
         print("4. Фильтрация по тегам")
         print("5. Удалить заметку")
         print("0. Выход")
-        
+
         choice = input("\nВыберите действие (0-5): ").strip()
-        
+
         if choice == "1":
             if not manager.notes:
                 print("База заметок пуста.")
@@ -33,46 +33,47 @@ def main():
                 print(f"Текст: {note.content}")
                 print(f"Теги: {tags_str if tags_str else 'нет'}")
                 print("-" * 40)
-                
+
         elif choice == "2":
             title = input("Введите заголовок: ").strip()
             content = input("Введите текст заметки: ").strip()
-            tags_raw = input("Введите теги через запятую (например: работа, важно): ").strip()
-            tags = [t.strip() for t in tags_raw.split(",")] if tags_raw else []
+            tags_raw = input("Введите теги через запятую: ").strip()
+            tags = [t.strip() for t in tags_raw.split(",") if t.strip()] if tags_raw else []
             
             note = manager.add_note(title, content, tags)
-            print(f" Заметка успешно создана! Ей присвоен ID: {note.id}")
-            
+            print(f"Заметка создана. ID: {note.id}")
+
         elif choice == "3":
             query = input("Введите поисковый запрос: ").strip()
             results = manager.search_full_text(query)
-            print(f"\nНайдено совпадений: {len(results)}")
+            print(f"Найдено совпадений: {len(results)}")
             for note in results:
                 print(f" -> [ID: {note.id}] {note.title} (Текст: {note.content[:30]}...)")
-                
+
         elif choice == "4":
             tag_input = input("Введите тег для фильтрации: ").strip()
             results = manager.filter_by_tags([tag_input])
-            print(f"\nНайдено заметок с тегом '{tag_input}': {len(results)}")
+            print(f"Найдено заметок с тегом '{tag_input}': {len(results)}")
             for note in results:
                 print(f" -> [ID: {note.id}] {note.title}")
-                
+
         elif choice == "5":
             try:
                 note_id = int(input("Введите ID заметки для удаления: "))
                 if manager.delete_note(note_id):
-                    print(" Заметка успешно удалена.")
+                    print("Заметка удалена.")
                 else:
-                    print(" Заметка с таким ID не найдена.")
+                    print("Заметка с таким ID не найдена.")
             except ValueError:
-                print(" Ошибка: ID должен быть числом.")
-                
+                print("Ошибка: ID должен быть числом.")
+
         elif choice == "0":
-            print("Программа завершена. Удачной сдачи практики!")
+            print("Программа завершена.")
             sys.exit(0)
         else:
-            print(" Некорректный ввод, попробуйте снова.")
+            print("Некорректный ввод, попробуйте снова.")
 
 if __name__ == "__main__":
     main()
+
 
