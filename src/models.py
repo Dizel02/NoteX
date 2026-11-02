@@ -17,4 +17,3 @@ class Note:
 
     def __repr__(self):
         return f"Note(id={self.id}, title='{self.title}', tags={[t.name for t in self.tags]})"
-
