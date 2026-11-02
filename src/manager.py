@@ -1,55 +1,63 @@
 from typing import List
+from sqlalchemy.orm import Session
 from src.models import Note, Tag
 
 class NoteManager:
-    def __init__(self):
-        self.notes: List[Note] = []
-        self.note_id_counter = 1
-        self.tag_id_counter = 1
+    def __init__(self, db: Session):
+        self.db = db
 
     def add_note(self, title: str, content: str, tag_names: List[str] = None) -> Note:
-        """Создание новой заметки с тегами"""
-        tags = []
+        """Создание новой заметки с тегами в MySQL"""
+        new_note = Note(title=title, content=content)
+        
         if tag_names:
             for name in tag_names:
-                tags.append(Tag(self.tag_id_counter, name.strip()))
-                self.tag_id_counter += 1
+                clean_name = name.strip()
+                if not clean_name:
+                    continue
+                # Проверяем, существует ли уже такой тег
+                tag = self.db.query(Tag).filter(Tag.name == clean_name).first()
+                if not tag:
+                    tag = Tag(name=clean_name)
+                    self.db.add(tag)
+                new_note.tags.append(tag)
 
-        new_note = Note(self.note_id_counter, title, content, tags)
-        self.notes.append(new_note)
-        self.note_id_counter += 1
+        self.db.add(new_note)
+        self.db.commit()
+        self.db.refresh(new_note)
         return new_note
 
     def delete_note(self, note_id: int) -> bool:
-        """Удаление заметки по её ID"""
-        for i, note in enumerate(self.notes):
-            if note.id == note_id:
-                self.notes.pop(i)
-                return True
+        """Удаление заметки по её ID из MySQL"""
+        note = self.db.query(Note).filter(Note.id == note_id).first()
+        if note:
+            self.db.delete(note)
+            self.db.commit()
+            return True
         return False
 
+    def get_all_notes(self) -> List[Note]:
+        """Получение всех заметок из базы данных"""
+        return self.db.query(Note).all()
+
     def search_full_text(self, query: str) -> List[Note]:
-        """Полнотекстовый поиск по заголовку и тексту без учёта регистра"""
+        """Полнотекстовый поиск по заголовку и тексту в MySQL (ILIKE-аналог)"""
         if not query:
             return []
         
-        query = query.lower()
-        results = []
-        for note in self.notes:
-            if query in note.title.lower() or query in note.content.lower():
-                results.append(note)
-        return results
+        search_filter = f"%{query.lower()}%"
+        return self.db.query(Note).filter(
+            (Note.title.like(search_filter)) | 
+            (Note.content.like(search_filter))
+        ).all()
 
     def filter_by_tags(self, tag_names: List[str]) -> List[Note]:
-        """Фильтрация заметок по тегам"""
+        """Фильтрация заметок по тегам через SQL-запрос"""
         if not tag_names:
             return []
 
-        search_tags = {name.lower().strip() for name in tag_names}
-        results = []
-        for note in self.notes:
-            note_tag_names = {tag.name.lower().strip() for tag in note.tags}
-            if search_tags.intersection(note_tag_names):
-                results.append(note)
-        return results
+        search_tags = [name.lower().strip() for name in tag_names]
+        return self.db.query(Note).join(Note.tags).filter(
+            Tag.name.in_(search_tags)
+        ).distinct().all()
 
