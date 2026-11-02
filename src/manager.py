@@ -41,14 +41,13 @@ class NoteManager:
         return results
 
     def filter_by_tags(self, tag_names: List[str]) -> List[Note]:
-        """Фильтрация заметок: находит те, у которых есть хотя бы один из указанных тегов"""
+        """Фильтрация заметок по тегам"""
         if not tag_names:
             return []
 
         search_tags = {name.lower().strip() for name in tag_names}
         results = []
         for note in self.notes:
-            # ИСПРАВЛЕНО: берём именно tag.name у каждого объекта Tag в заметке
             note_tag_names = {tag.name.lower().strip() for tag in note.tags}
             if search_tags.intersection(note_tag_names):
                 results.append(note)
