@@ -1,16 +1,16 @@
 import sys
+from src.database import engine, Base, SessionLocal
 from src.manager import NoteManager
 
 def main():
-    manager = NoteManager()
-
-    # Демонстрационные данные
-    manager.add_note("План на практику", "Выполнить все задачи по разработке модуля заметок.", ["учёба", "практика"])
-    manager.add_note("Купить продукты", "Хлеб, молоко, сыр, зерновой кофе.", ["покупки"])
-    manager.add_note("Идеи для проекта", "Добавить полноценный GUI интерфейс на Python с помощью Tkinter.", ["идеи", "code"])
+    # Автоматическое создание таблиц в MySQL при запуске
+    Base.metadata.create_all(bind=engine)
+    
+    db_session = SessionLocal()
+    manager = NoteManager(db_session)
 
     print("=" * 60)
-    print("СИСТЕМА УПРАВЛЕНИЯ ЗАМЕТКАМИ С ТЕГАМИ И ПОИСКОМ")
+    print("СИСТЕМА УПРАВЛЕНИЯ ЗАМЕТКАМИ (БАЗА ДАННЫХ: MYSQL)")
     print("=" * 60)
 
     while True:
@@ -25,9 +25,10 @@ def main():
         choice = input("\nВыберите действие (0-5): ").strip()
 
         if choice == "1":
-            if not manager.notes:
+            notes = manager.get_all_notes()
+            if not notes:
                 print("База заметок пуста.")
-            for note in manager.notes:
+            for note in notes:
                 tags_str = ", ".join([f"#{t.name}" for t in note.tags])
                 print(f"\nID: {note.id} | {note.title}")
                 print(f"Текст: {note.content}")
@@ -41,7 +42,7 @@ def main():
             tags = [t.strip() for t in tags_raw.split(",") if t.strip()] if tags_raw else []
             
             note = manager.add_note(title, content, tags)
-            print(f"Заметка создана. ID: {note.id}")
+            print(f"Заметка создана в MySQL. ID: {note.id}")
 
         elif choice == "3":
             query = input("Введите поисковый запрос: ").strip()
@@ -61,13 +62,14 @@ def main():
             try:
                 note_id = int(input("Введите ID заметки для удаления: "))
                 if manager.delete_note(note_id):
-                    print("Заметка удалена.")
+                    print("Заметка удалена из MySQL.")
                 else:
                     print("Заметка с таким ID не найдена.")
             except ValueError:
                 print("Ошибка: ID должен быть числом.")
 
         elif choice == "0":
+            db_session.close()
             print("Программа завершена.")
             sys.exit(0)
         else:
