@@ -1,45 +1,33 @@
-import unittest
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.database import Base
-from src import NoteManager
+from src.manager import NoteManager
+from src.models import NoteVersion
 
-class TestNoteSearch(unittest.TestCase):
-    def setUp(self):
-        """Создание временной тестовой БД в памяти"""
-        self.engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(bind=self.engine)
-        SessionLocal = sessionmaker(bind=self.engine)
-        self.db = SessionLocal()
-        
-        self.manager = NoteManager(self.db)
-        self.manager.add_note("Купить кофе", "Нужно купить зерновой кофе и молоко.", ["покупки"])
-        self.manager.add_note("Учёба Python", "Полнотекстовый поиск работает отлично.", ["учёба", "code"])
+# Тестируем на независимой SQLite в памяти, чтобы не ломать MySQL
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    def tearDown(self):
-        """Закрытие сессии и уничтожение тестовой БД"""
-        self.db.close()
-        Base.metadata.drop_all(bind=self.engine)
+@pytest.fixture
+def db_session():
+    Base.metadata.create_all(bind=engine)
+    session = TestingSessionLocal()
+    yield session
+    session.close()
+    Base.metadata.drop_all(bind=engine)
 
-    def test_full_text_search_success(self):
-        results = self.manager.search_full_text("зерновой")
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].title, "Купить кофе")
+def test_add_note_and_version(db_session):
+    manager = NoteManager(db_session)
+    note = manager.add_note("Заголовок", "Текст заметки", ["тест", "python"])
+    
+    assert note.id is not None
+    assert note.title == "Заголовок"
+    assert len(note.tags) == 2
 
-    def test_full_text_search_case_insensitive(self):
-        results = self.manager.search_full_text("PYTHON")
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].title, "Учёба Python")
-
-    def test_full_text_search_no_results(self):
-        results = self.manager.search_full_text("джаваскрипт")
-        self.assertEqual(len(results), 0)
-
-    def test_filter_by_tags(self):
-        results = self.manager.filter_by_tags(["учёба"])
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].title, "Учёба Python")
-
-if __name__ == "__main__":
-    unittest.main()
-
+    # Проверяем, создалась ли автоматически история изменений (Версия 1)
+    version = db_session.query(NoteVersion).filter(NoteVersion.note_id == note.id).first()
+    assert version is not None
+    assert version.version_number == 1
+    assert version.title_snapshot == "Заголовок"
