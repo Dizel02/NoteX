@@ -1,6 +1,6 @@
 import sys
 from src.database import engine, Base, SessionLocal
-from src.manager import NoteManager
+from src import NoteManager
 
 def main():
     # Автоматическое создание таблиц в MySQL при запуске

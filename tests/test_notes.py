@@ -2,7 +2,7 @@ import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.database import Base
-from src.manager import NoteManager
+from src import NoteManager
 
 class TestNoteSearch(unittest.TestCase):
     def setUp(self):
