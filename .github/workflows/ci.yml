@@ -2,9 +2,9 @@ name: Python App CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "feature/models-stub" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "feature/models-stub" ]
 
 jobs:
   test:
