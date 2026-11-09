@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Index
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from src.database import Base
@@ -18,10 +18,6 @@ class Note(Base):
 
     tags = relationship("Tag", secondary="note_tags", back_populates="notes")
     versions = relationship("NoteVersion", back_populates="note", cascade="all, delete-orphan")
-
-    __table_args__ = (
-        Index('ft_notes_search', 'title', 'content', mysql_prefix='FULLTEXT'),
-    )
 
 class Tag(Base):
     __tablename__ = "tags"

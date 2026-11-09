@@ -1,16 +1,14 @@
 import sys
-from src.database import engine, Base, SessionLocal
+from src.database import engine, Base, SessionLocal, db_type
 from src import NoteManager
 
 def main():
-    # Автоматическое создание таблиц в MySQL при запуске
     Base.metadata.create_all(bind=engine)
-    
     db_session = SessionLocal()
     manager = NoteManager(db_session)
 
     print("=" * 60)
-    print("СИСТЕМА УПРАВЛЕНИЯ ЗАМЕТКАМИ (БАЗА ДАННЫХ: MYSQL)")
+    print(f"СИСТЕМА УПРАВЛЕНИЯ ЗАМЕТКАМИ (АКТИВНАЯ БД: {db_type})")
     print("=" * 60)
 
     while True:
@@ -42,7 +40,7 @@ def main():
             tags = [t.strip() for t in tags_raw.split(",") if t.strip()] if tags_raw else []
             
             note = manager.add_note(title, content, tags)
-            print(f"Заметка создана в MySQL. ID: {note.id}")
+            print(f"Заметка успешно создана. ID: {note.id}")
 
         elif choice == "3":
             query = input("Введите поисковый запрос: ").strip()
@@ -62,7 +60,7 @@ def main():
             try:
                 note_id = int(input("Введите ID заметки для удаления: "))
                 if manager.delete_note(note_id):
-                    print("Заметка удалена из MySQL.")
+                    print("Заметка удалена из базы данных.")
                 else:
                     print("Заметка с таким ID не найдена.")
             except ValueError:

@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 from src.models import Note, Tag, NoteVersion
 
 class NoteManager:
@@ -39,9 +38,12 @@ class NoteManager:
     def search_full_text(self, query: str):
         if not query:
             return []
-        sql = text("SELECT id FROM notes WHERE MATCH(title, content) AGAINST(:q IN NATURAL LANGUAGE MODE)")
-        result_ids = [row[0] for row in self.db.execute(sql, {"q": query}).fetchall()]
-        return self.db.query(Note).filter(Note.id.in_(result_ids)).all() if result_ids else []
+        # Универсальный поиск по подстроке (ILIKE), работающий без ошибок и в MySQL, и в SQLite
+        search_pattern = f"%{query}%"
+        return self.db.query(Note).filter(
+            (Note.title.ilike(search_pattern)) | 
+            (Note.content.ilike(search_pattern))
+        ).all()
 
     def filter_by_tags(self, tag_names: list):
         if not tag_names:
