@@ -4,94 +4,149 @@ from src.database import engine, Base, SessionLocal, db_type
 from src import NoteManager
 from src.models import Note, Tag
 
+
 class NoteXApp:
     def __init__(self, root):
         self.root = root
         self.root.title("NoteX — Менеджер заметок с тегами и поиском")
-        self.root.geometry("820x540")
-        self.root.resizable(False, False)
+        self.root.geometry("920x640")
+        self.root.minsize(900, 620)
+        self.root.resizable(True, True)
+        self.root.configure(bg="#F0F2F5")
 
-        # Инициализация таблиц и сессии точно как в run_cli.py
         Base.metadata.create_all(bind=engine)
         self.db_session = SessionLocal()
         self.manager = NoteManager(self.db_session)
 
+        self.configure_styles()
         self.setup_ui()
         self.load_notes()
 
+    def configure_styles(self):
+        style = ttk.Style()
+        style.theme_use("clam")
+
+        bg_main = "#F0F2F5"
+        bg_card = "#FFFFFF"
+        primary = "#F59E0B"
+        primary_hover = "#D97706"
+        danger = "#DC2626"
+        danger_hover = "#B91C1C"
+        text_dark = "#1E293B"
+
+        style.configure("Main.TFrame", background=bg_main)
+        style.configure("Card.TFrame", background=bg_card, relief="flat")
+        style.configure("Card.TLabelframe", background=bg_card, foreground=text_dark, font=("Segoe UI", 10, "bold"))
+        style.configure("Card.TLabelframe.Label", background=bg_card, foreground="#B45309", font=("Segoe UI", 10, "bold"))
+
+        style.configure("TLabel", background=bg_card, foreground=text_dark, font=("Segoe UI", 9))
+        style.configure("Top.TLabel", background=bg_main, foreground=text_dark, font=("Segoe UI", 9, "bold"))
+        style.configure("TEntry", fieldbackground="#F8FAFC", foreground=text_dark, padding=5, font=("Segoe UI", 9))
+
+        style.configure("Primary.TButton", background=primary, foreground="#1E293B", font=("Segoe UI", 9, "bold"), padding=(12, 6), borderwidth=0)
+        style.map("Primary.TButton", background=[("active", primary_hover)])
+
+        style.configure("Secondary.TButton", background="#E2E8F0", foreground=text_dark, font=("Segoe UI", 9), padding=(10, 6), borderwidth=0)
+        style.map("Secondary.TButton", background=[("active", "#CBD5E1")])
+
+        style.configure("Danger.TButton", background=danger, foreground="white", font=("Segoe UI", 9, "bold"), padding=(12, 6), borderwidth=0)
+        style.map("Danger.TButton", background=[("active", danger_hover)])
+
+        style.configure("Treeview", background=bg_card, foreground=text_dark, rowheight=28, fieldbackground=bg_card, font=("Segoe UI", 9), borderwidth=0)
+        style.configure("Treeview.Heading", background="#E2E8F0", foreground=text_dark, font=("Segoe UI", 9, "bold"), padding=6, borderwidth=0)
+        style.map("Treeview", background=[("selected", "#FEF3C7")], foreground=[("selected", "#92400E")])
+
     def setup_ui(self):
-        # Верхняя панель поиска и фильтрации
-        top_frame = ttk.Frame(self.root, padding=10)
+        header = tk.Frame(self.root, bg="#1E293B", height=52)
+        header.pack(fill=tk.X)
+        header.pack_propagate(False)
+
+        tk.Label(header, text="NoteX", bg="#1E293B", fg="#FBBF24", font=("Segoe UI", 15, "bold")).pack(side=tk.LEFT, padx=(20, 6))
+        tk.Label(header, text="|  Умный менеджер заметок с тегами и полнотекстовым поиском", bg="#1E293B", fg="#CBD5E1", font=("Segoe UI", 10)).pack(side=tk.LEFT)
+
+        status_frame = tk.Frame(self.root, bg="#E2E8F0", height=28)
+        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        status_frame.pack_propagate(False)
+
+        db_color = "#15803D" if "MYSQL" in db_type.upper() else "#B45309"
+        tk.Label(status_frame, text="●", bg="#E2E8F0", fg=db_color, font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT, padx=(15, 4))
+        tk.Label(
+            status_frame,
+            text=f"Активная СУБД: {db_type}   |   Автоверсионирование: Включено (v1)",
+            bg="#E2E8F0", fg="#334155", font=("Segoe UI", 8, "bold")
+        ).pack(side=tk.LEFT)
+
+        top_frame = ttk.Frame(self.root, style="Main.TFrame", padding=(20, 12, 20, 6))
         top_frame.pack(fill=tk.X)
 
-        ttk.Label(top_frame, text="Поиск по тексту:").pack(side=tk.LEFT)
+        ttk.Label(top_frame, text="Поиск по тексту:", style="Top.TLabel").pack(side=tk.LEFT)
         self.search_entry = ttk.Entry(top_frame, width=22)
-        self.search_entry.pack(side=tk.LEFT, padx=5)
-        ttk.Button(top_frame, text="Найти", command=self.search_notes).pack(side=tk.LEFT, padx=2)
+        self.search_entry.pack(side=tk.LEFT, padx=(6, 6))
+        ttk.Button(top_frame, text="Найти", style="Primary.TButton", command=self.search_notes).pack(side=tk.LEFT, padx=(0, 16))
 
-        ttk.Label(top_frame, text="   Фильтр по тегу:").pack(side=tk.LEFT)
+        ttk.Label(top_frame, text="Фильтр по тегу:", style="Top.TLabel").pack(side=tk.LEFT)
         self.tag_entry = ttk.Entry(top_frame, width=18)
-        self.tag_entry.pack(side=tk.LEFT, padx=5)
-        ttk.Button(top_frame, text="Фильтр", command=self.filter_by_tag).pack(side=tk.LEFT, padx=2)
+        self.tag_entry.pack(side=tk.LEFT, padx=(6, 6))
+        ttk.Button(top_frame, text="Фильтр", style="Secondary.TButton", command=self.filter_by_tag).pack(side=tk.LEFT)
 
-        ttk.Button(top_frame, text="Показать все", command=self.load_notes).pack(side=tk.RIGHT)
+        ttk.Button(top_frame, text="Показать все", style="Secondary.TButton", command=self.load_notes).pack(side=tk.RIGHT)
 
-        # Центральная область: слева список заметок, справа форма добавления
-        main_frame = ttk.Frame(self.root, padding=10)
+        main_frame = ttk.Frame(self.root, style="Main.TFrame", padding=(20, 8, 20, 12))
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Левая колонка (Таблица заметок)
-        left_frame = ttk.LabelFrame(main_frame, text="Реестр заметок", padding=10)
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        left_frame = ttk.LabelFrame(main_frame, text="  Реестр заметок  ", style="Card.TLabelframe", padding=12)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 12))
+
+        btn_frame = ttk.Frame(left_frame, style="Card.TFrame")
+        btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
+        ttk.Button(btn_frame, text="Удалить выбранную (Cascade)", style="Danger.TButton", command=self.delete_note).pack(side=tk.LEFT)
 
         columns = ("id", "title", "tags")
-        self.tree = ttk.Treeview(left_frame, columns=columns, show="headings", height=16)
-        self.tree.heading("id", text="ID")
-        self.tree.heading("title", text="Заголовок")
-        self.tree.heading("tags", text="Теги")
-        self.tree.column("id", width=40, anchor=tk.CENTER)
-        self.tree.column("title", width=210)
-        self.tree.column("tags", width=160)
-        self.tree.pack(fill=tk.BOTH, expand=True)
+        self.tree = ttk.Treeview(left_frame, columns=columns, show="headings", height=9)
+        self.tree.heading("id", text="ID", anchor=tk.CENTER)
+        self.tree.heading("title", text="Заголовок заметки", anchor=tk.W)
+        self.tree.heading("tags", text="Привязанные теги", anchor=tk.W)
+        self.tree.column("id", width=55, anchor=tk.CENTER, stretch=False)
+        self.tree.column("title", width=260, anchor=tk.W)
+        self.tree.column("tags", width=180, anchor=tk.W)
+
+        self.tree.tag_configure("oddrow", background="#F8FAFC")
+        self.tree.tag_configure("evenrow", background="#FFFFFF")
+
+        self.tree.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.tree.bind("<<TreeviewSelect>>", self.on_select_note)
 
-        btn_frame = ttk.Frame(left_frame)
-        btn_frame.pack(fill=tk.X, pady=(8, 0))
-        ttk.Button(btn_frame, text="Удалить выбранную (Cascade)", command=self.delete_note).pack(side=tk.LEFT)
-
-        # Правая колонка (Создание и просмотр заметки)
-        right_frame = ttk.LabelFrame(main_frame, text="Карточка заметки", padding=10)
+        right_frame = ttk.LabelFrame(main_frame, text="  Карточка заметки  ", style="Card.TLabelframe", padding=12)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
+
+        action_frame = ttk.Frame(right_frame, style="Card.TFrame")
+        action_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
+        ttk.Button(action_frame, text="Сохранить заметку", style="Primary.TButton", command=self.add_note).pack(side=tk.LEFT)
+        ttk.Button(action_frame, text="Очистить", style="Secondary.TButton", command=self.clear_fields).pack(side=tk.RIGHT)
 
         ttk.Label(right_frame, text="Заголовок:").pack(anchor=tk.W)
         self.title_input = ttk.Entry(right_frame, width=38)
-        self.title_input.pack(fill=tk.X, pady=(2, 8))
+        self.title_input.pack(fill=tk.X, pady=(3, 8))
 
         ttk.Label(right_frame, text="Теги (через запятую):").pack(anchor=tk.W)
         self.tags_input = ttk.Entry(right_frame, width=38)
-        self.tags_input.pack(fill=tk.X, pady=(2, 8))
+        self.tags_input.pack(fill=tk.X, pady=(3, 8))
 
-        ttk.Label(right_frame, text="Текст заметки:").pack(anchor=tk.W)
-        self.content_input = tk.Text(right_frame, width=38, height=11, font=("Segoe UI", 9))
-        self.content_input.pack(fill=tk.BOTH, expand=True, pady=(2, 10))
-
-        action_frame = ttk.Frame(right_frame)
-        action_frame.pack(fill=tk.X)
-        ttk.Button(action_frame, text="Сохранить новую заметку", command=self.add_note).pack(side=tk.LEFT)
-        ttk.Button(action_frame, text="Очистить поля", command=self.clear_fields).pack(side=tk.RIGHT)
-
-        # Нижняя строка статуса БД с вашей переменной db_type
-        status_bar = ttk.Label(self.root, text=f" АКТИВНАЯ БД: {db_type} | Версионирование: Включено (v1)", relief=tk.SUNKEN, anchor=tk.W)
-        status_bar.pack(side=tk.BOTTOM, fill=tk.X)
-
+        ttk.Label(right_frame, text="Содержимое заметки:").pack(anchor=tk.W)
+        self.content_input = tk.Text(
+            right_frame, width=38, height=8, font=("Segoe UI", 9),
+            bg="#F8FAFC", fg="#1E293B", relief="solid", borderwidth=1, padx=6, pady=6
+        )
+        self.content_input.pack(fill=tk.BOTH, expand=True, pady=(3, 0))
     def load_notes(self, notes=None):
         for item in self.tree.get_children():
             self.tree.delete(item)
         if notes is None:
             notes = self.manager.get_all_notes()
-        for n in notes:
+        for idx, n in enumerate(notes):
             tags_str = ", ".join([f"#{t.name}" for t in n.tags])
-            self.tree.insert("", tk.END, values=(n.id, n.title, tags_str))
+            row_tag = "evenrow" if idx % 2 == 0 else "oddrow"
+            self.tree.insert("", tk.END, values=(n.id, n.title, tags_str), tags=(row_tag,))
 
     def add_note(self):
         title = self.title_input.get().strip()
@@ -99,11 +154,11 @@ class NoteXApp:
         tags = [t.strip() for t in self.tags_input.get().split(",") if t.strip()]
 
         if not title or not content:
-            messagebox.showwarning("Ошибка", "Заполните заголовок и текст заметки!")
+            messagebox.showwarning("Внимание", "Заполните заголовок и текст заметки!")
             return
 
-        self.manager.create_note(title, content, tags)
-        messagebox.showinfo("Успех", "Заметка сохранена! Создана начальная версия.")
+        self.manager.add_note(title, content, tags)
+        messagebox.showinfo("Успех", "Заметка сохранена! Создана начальная версия (v1).")
         self.clear_fields()
         self.load_notes()
 
@@ -112,11 +167,13 @@ class NoteXApp:
         if not kw:
             self.load_notes()
             return
-        results = self.manager.search_notes(kw)
+        results = self.db_session.query(Note).filter(
+            (Note.title.ilike(f"%{kw}%")) | (Note.content.ilike(f"%{kw}%"))
+        ).all()
         self.load_notes(results)
 
     def filter_by_tag(self):
-        tag_name = self.tag_entry.get().strip()
+        tag_name = self.tag_entry.get().strip().lstrip("#")
         if not tag_name:
             self.load_notes()
             return
@@ -128,9 +185,9 @@ class NoteXApp:
         if not selected:
             messagebox.showwarning("Внимание", "Выберите заметку в таблице слева!")
             return
-        note_id = self.tree.item(selected[0])["values"][0]
-        if self.manager.delete_note(note_id):
-            messagebox.showinfo("Удалено", f"Заметка ID {note_id} и её история удалены.")
+        note_id, _, _ = self.tree.item(selected)["values"]
+        if self.manager.delete_note(int(note_id)):
+            messagebox.showinfo("Удалено", f"Заметка ID {note_id} и её история версий удалены.")
             self.clear_fields()
             self.load_notes()
 
@@ -138,8 +195,8 @@ class NoteXApp:
         selected = self.tree.selection()
         if not selected:
             return
-        note_id = self.tree.item(selected[0])["values"][0]
-        note = self.db_session.query(Note).filter_by(id=note_id).first()
+        note_id, _, _ = self.tree.item(selected)["values"]
+        note = self.db_session.query(Note).filter_by(id=int(note_id)).first()
         if note:
             self.clear_fields()
             self.title_input.insert(0, note.title)
@@ -154,6 +211,7 @@ class NoteXApp:
     def on_closing(self):
         self.db_session.close()
         self.root.destroy()
+
 
 if __name__ == "__main__":
     root = tk.Tk()
